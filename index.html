@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Online weather monitoring dashboard for Kolkata using Python, Flask, wttr.in and optional Blynk integration.">
+  <title>Online Weather Monitoring Station</title>
+  <style>
+    :root { color-scheme: light; --ink:#172b4d; --muted:#5e6c84; --panel:#fff; --bg:#edf3fb; --accent:#2368d8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, Arial, sans-serif; background:linear-gradient(135deg,#edf3fb,#dce9fb); color:var(--ink); min-height:100vh; }
+    header { padding:38px 18px 24px; text-align:center; }
+    .eyebrow { text-transform:uppercase; letter-spacing:.14em; font-size:.75rem; color:var(--accent); font-weight:800; }
+    h1 { margin:10px 0 8px; font-size:clamp(1.8rem,4vw,2.8rem); }
+    header p { color:var(--muted); margin:0; }
+    main { width:min(1000px,92%); margin:0 auto 40px; }
+    .status { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:var(--panel); padding:14px 18px; border-radius:14px; box-shadow:0 8px 26px #19365b12; margin-bottom:18px; }
+    .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#d99b20; margin-right:8px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+    .card { background:var(--panel); border-radius:18px; padding:24px; box-shadow:0 8px 26px #19365b12; }
+    .icon { font-size:1.8rem; }
+    .label { color:var(--muted); margin:12px 0 8px; font-weight:650; }
+    .value { font-size:clamp(2rem,5vw,2.8rem); font-weight:800; letter-spacing:-.04em; }
+    .unit { font-size:1rem; color:var(--muted); font-weight:600; }
+    .foot { color:var(--muted); text-align:center; line-height:1.6; font-size:.9rem; padding:24px 12px; }
+    .error { color:#b42318; }
+    code { background:#eef2f8; padding:2px 5px; border-radius:5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Python · Flask · Blynk</div>
+    <h1>Online Weather Monitoring Station</h1>
+    <p>Current weather for {{ city }}, West Bengal</p>
+  </header>
+  <main>
+    <section class="status" aria-live="polite">
+      <div><span class="dot" id="dot"></span><strong id="connection">Connecting to weather service…</strong></div>
+      <div>Last updated: <span id="updated">—</span></div>
+    </section>
+    <section class="cards" aria-label="Current weather readings">
+      <article class="card">
+        <div class="icon" aria-hidden="true">🌡️</div>
+        <div class="label">Temperature</div>
+        <div class="value"><span id="temperature">—</span> <span class="unit">°C</span></div>
+      </article>
+      <article class="card">
+        <div class="icon" aria-hidden="true">💧</div>
+        <div class="label">Humidity</div>
+        <div class="value"><span id="humidity">—</span> <span class="unit">%</span></div>
+      </article>
+      <article class="card">
+        <div class="icon" aria-hidden="true">🌬️</div>
+        <div class="label">Atmospheric Pressure</div>
+        <div class="value"><span id="pressure">—</span> <span class="unit">hPa</span></div>
+      </article>
+    </section>
+    <section class="status" style="margin-top:18px">
+      <div><strong>Blynk status:</strong> <span id="blynk">Checking…</span></div>
+      <div id="error" class="error"></div>
+    </section>
+    <p class="foot">Readings are fetched from an online weather service, not physical sensors. Data refreshes about once per minute while the Python app is running.</p>
+  </main>
+  <script>
+    const byId = (id) => document.getElementById(id);
+    async function refreshWeather() {
+      try {
+        const response = await fetch("/api/weather", { cache: "no-store" });
+        const data = await response.json();
+        if (data.temperature === null || data.temperature === undefined) {
+          throw new Error(data.message || data.error || "Waiting for first update");
+        }
+        byId("temperature").textContent = data.temperature;
+        byId("humidity").textContent = data.humidity;
+        byId("pressure").textContent = data.pressure;
+        byId("updated").textContent = data.updated_at ? new Date(data.updated_at).toLocaleTimeString() : "—";
+        byId("connection").textContent = "Weather data loaded";
+        byId("dot").style.background = "#19945b";
+        byId("blynk").textContent = data.blynk_status || "Unknown";
+        byId("error").textContent = data.error || "";
+      } catch (error) {
+        byId("connection").textContent = "Waiting for weather data";
+        byId("dot").style.background = "#d99b20";
+        byId("error").textContent = error.message;
+      }
+    }
+    refreshWeather();
+    setInterval(refreshWeather, 15000);
+  </script>
+</body>
+</html>
